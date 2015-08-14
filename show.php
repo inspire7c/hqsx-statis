@@ -1,86 +1,54 @@
 <?php
     header("Content-type:text/html;charset=utf-8");
-    /*$httpurl = 'http://'.$_SERVER['HTTP_HOST'].'/index.php';
-    $data = file_get_contents($httpurl);
-    if(empty($data)){
-      echo json_encode(array('code' => 0, 'msg' => '获取数据失败'));
-    }
-    $data = json_decode($data, true);*/
-    $connect = mysqli_connect('localhost','root','123','hqsx-statis') or die ('Unale to connect');
+    $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
     mysqli_query($connect,'SET NAMES utf8');
     $date = date("Y-m-d");
-    $keyword_nums_sql = "SELECT SUM(num) FROM keyword_search_nums WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
-    $keyword_nums_query = mysqli_query($connect, $keyword_nums_sql); 
-    $keyword_nums_result = mysqli_fetch_row($keyword_nums_query);
-    
+    //今日关键字搜索、guid搜索、独立ip搜索的次数
+    $today_nums_sql = "SELECT keyword_nums, guid_nums, ip_nums FROM today_statis WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
+    $today_nums_query = mysqli_query($connect, $today_nums_sql); 
+    $today_nums_result = mysqli_fetch_assoc($today_nums_query);
+    mysqli_free_result($today_nums_query);
+    /*print_r($today_nums_result);exit;*/
 
- 
-    $keyword_top_sql = "SELECT keyword, SUM(num) AS num FROM keyword_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' GROUP BY keyword";
+    //搜索前10的关键字
+    $keyword_top_sql = "SELECT keyword, num FROM keyword_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC";
     $keyword_top_query = mysqli_query($connect, $keyword_top_sql); 
     while($row = mysqli_fetch_assoc($keyword_top_query)){
       $keyword_top_result[] = $row;
     }
-    /*foreach($keyword_top_result as $k => $v){
-      $result[$v['keyword']][] = $v['num'];
-    }*/
-    $keyword_top_result = arr_sort($keyword_top_result, 'num', 'desc');
-    $keyword_top_result = array_slice($keyword_top_result, 0, 10);
+    mysqli_free_result($keyword_top_query);
     /*echo "<pre>";
     print_r($keyword_top_result);exit;*/
 
+    //搜索关键字前10的ip
+    $k_ip_top_sql = "SELECT ip, num FROM keyword_top_10_ip WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC";
+    $k_ip_top_query = mysqli_query($connect, $k_ip_top_sql); 
+    while($row = mysqli_fetch_assoc($k_ip_top_query)){
+      $k_ip_top_result[] = $row;
+    }
+    mysqli_free_result($k_ip_top_query);
+    /*echo "<pre>";
+    print_r($k_ip_top_result);exit;*/
 
-    $id_nums_sql = "SELECT SUM(num) FROM id_search_nums WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
-    $id_nums_query = mysqli_query($connect, $id_nums_sql);  
-    $id_nums_result = mysqli_fetch_row($id_nums_query);
-    //print_r($id_nums_result);exit;
-    
-    $id_top_sql = "SELECT guid, SUM(num) AS num FROM id_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' GROUP BY guid"; 
+    //搜索前10的guid
+    $id_top_sql = "SELECT title, guid, num FROM id_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC"; 
     $id_top_query = mysqli_query($connect, $id_top_sql); 
      while($row = mysqli_fetch_assoc($id_top_query)){
       $id_top_result[] = $row;
     }
-    $id_top_result = arr_sort($id_top_result, 'num', 'desc');
-    $id_top_result = array_slice($id_top_result, 0, 10);
-    foreach($id_top_result as  $k => $v){
-      $id_top_result[$k]['title'] = getTitleByguid($v['guid']);
-    }
+    mysqli_free_result($id_top_query);
     /*echo "<pre>";
     print_r($id_top_result);exit;*/
 
-function arr_sort($array, $key, $order="asc"){//asc是升序 desc是降序
-  $arr_nums = $arr = array();
-  foreach($array as $k => $v){
-    $arr_nums[$k] = $v[$key];
-  }
-  if($order == 'asc'){
-    asort($arr_nums);
-  }else{
-    arsort($arr_nums);
-  }
-  foreach($arr_nums as $k => $v){
-    $arr[$k] = $array[$k];
-  }
-  return $arr;
-}
-
-function getTitleByguid($guid){
-  $httpurl = "http://www.tvm.cn/share/search.php?guid=".$guid."&action=guid";
-  $json_data = file_get_contents($httpurl);
-  if(empty($json_data)){
-    echo json_encode(array("code" => '0', 'msg' => $guid.'请求获取title失败'));
-  }
-  $arr_data = json_decode($json_data, true);
-  if(isset($arr_data['feed']['entry'])){
-    $title = $arr_data['feed']['entry']['title']['$t'];
-  }else{
-    $title = "";
-  }
-  
-  /*echo $title;
-  echo "<pre>";
-  print_r($arr_data);exit;*/
-  return $title;
-}
+    //搜索guid前10的ip
+    $id_ip_top_sql = "SELECT ip, num FROM id_top_10_ip WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC"; 
+    $id_ip_top_query = mysqli_query($connect, $id_ip_top_sql);  
+     while($row = mysqli_fetch_assoc($id_ip_top_query)){
+      $id_ip_top_result[] = $row;
+    }
+    mysqli_free_result($id_ip_top_query);
+    /*echo "<pre>";
+    print_r($id_ip_top_result);exit;*/
 ?>
 <!doctype html>
 <html lang="en">
@@ -110,7 +78,10 @@ function getTitleByguid($guid){
       <div class="title"><?php echo date("Y-m-d");?>环球视讯数据统计</div>
       <table>
           <tr>
-            <td class="text_title">今日执行关键词搜索查询的次数</td><td><?php if(isset($keyword_nums_result[0])){ echo $keyword_nums_result[0];}else{ echo "无";}?></td>
+            <td class="text_title">今日独立ip搜索查询的次数</td><td><?php if(isset($today_nums_result['ip_nums'])){ echo $today_nums_result['ip_nums'];}else{ echo "无";}?></td>
+          </tr>
+          <tr>
+            <td class="text_title">今日执行关键词搜索查询的次数</td><td><?php if(isset($today_nums_result['keyword_nums'])){ echo $today_nums_result['keyword_nums'];}else{ echo "无";}?></td>
           </tr>
           <tr>
             <td colspan="2" class="text_title">今日搜索次数排名前十的关键词及次数</td>
@@ -130,7 +101,7 @@ function getTitleByguid($guid){
           </tr>
           <?php }}?>
           <tr>
-            <td class="text_title">相关搜索查询的次数</td><td><?php if(isset($id_nums_result[0])){ echo $id_nums_result[0];}else{ echo "无";}?></td>
+            <td class="text_title">今日执行相关搜索查询的次数</td><td><?php if(isset($today_nums_result['guid_nums'])){ echo $today_nums_result['guid_nums'];}else{ echo "无";}?></td>
           </tr>
           <tr>
             <td colspan="2" class="text_title">今日相关搜索查询排名前十的GUID及次数</td>
@@ -149,12 +120,8 @@ function getTitleByguid($guid){
             <td></td><td></td>
           </tr>
           <?php }}?>
-
-
-
       </table>
     </div>
-    
     <div class="foot"><div class="foot_con">天脉聚源(北京)传媒科技有限公司&nbsp;&nbsp;版权所有</div></div>
   </div>
  </body>
