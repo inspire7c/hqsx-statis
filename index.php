@@ -2,21 +2,23 @@
 set_time_limit(0);
 date_default_timezone_set('Asia/shanghai');
 header("Content-type:text/html;charset=utf-8");
+$today = date("Ymd");
 $date = date("Y-m-d");
 $datetime = date("Y-m-d H:i:s");
+$thatDate = @$_REQUEST['date'];//2015-08-17
+$file_date = $thatDate ? date("Ymd", strtotime($thatDate)) : $today;
 $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
 mysqli_query($connect,'SET NAMES utf8');
-$sql = "SELECT id FROM today_statis WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
+$sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
 $query = mysqli_query($connect, $sql); 
 $row = mysqli_fetch_row($query);
 if(!empty($row)){
-	echo $date."数据已统计";exit;
+	echo $thatDate."数据已统计";exit;
 }
-$today = date("Ymd");
 //遍历该目录下的.log文件
 $log_dir_path = '/opt/host/hqsxlog/';
-$log_list = listDir($log_dir_path);
-function listDir($dir){
+$log_list = listDir($log_dir_path, $file_date);
+function listDir($dir, $file_date){
     static $result_array = array();
     if(!is_dir($dir)){
     	echo json_encode(array("code" => 0, 'msg' => $dir."目录不存在"));exit;
@@ -25,13 +27,13 @@ function listDir($dir){
     	while (($file = readdir($dh)) !== false){
     		if((is_dir($dir.$file)) && $file != "." && $file != ".."){
             		//if(preg_match_all('/((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)/', $file, $matches)){
-            			listDir($dir.$file."/");
+            			listDir($dir.$file."/", $file_date);
             		//}
             	}else{
             		if($file!="." && $file!=".."){
             			//$file_name = 'access'.date("Ymd").'.log';
-            			//if(is_file($dir.$file) && $file == "access.log_20150804"){
-            			if(strstr($file,"20150812") || strstr($file,"20150811")){
+            			if(is_file($dir.$file) && strstr($file, $file_date)){
+            			//if(strstr($file,"20150805") || strstr($file,"20150806")){
             	    			$result_array[] = $dir.$file;
             			}
                 	}
@@ -174,9 +176,10 @@ while(!feof($fp)){
 	$i++;
 }
 fclose($fp);
+unlink($file_path);
 }
 //数据统计入库
-$sql = "SELECT id FROM today_statis WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
+$sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
 $query = mysqli_query($connect, $sql); 
 $row = mysqli_fetch_row($query);
 mysqli_free_result($query);
@@ -198,14 +201,14 @@ if(empty($row)){
 	mysqli_free_result($ip_nums_query);
 	
 	//今日数据
-	$today_sql = "INSERT today_statis(`keyword_nums`, `guid_nums`, `ip_nums`, `created`) VALUES ('".$keyword_nums_result[0]."', '".$id_nums_result[0]."', '".$ip_nums_result[0]."', '".$datetime."')";
+	$today_sql = "INSERT today_statis(`keyword_nums`, `guid_nums`, `ip_nums`, `created`, `statis_date`) VALUES ('".$keyword_nums_result[0]."', '".$id_nums_result[0]."', '".$ip_nums_result[0]."', '".$datetime."', '".$thatDate."')";
 	
 	//排名前10的关键字
 	$keyword_top_sql = "SELECT keyword, num FROM keyword_count ORDER BY num DESC LIMIT 0, 10";
 	$keyword_top_query = mysqli_query($connect, $keyword_top_sql);
-	$keyword_insert_sql = "INSERT keyword_top_10(`keyword`, `num`, `created`) VALUES";
+	$keyword_insert_sql = "INSERT keyword_top_10(`keyword`, `num`, `created`, `statis_date`) VALUES";
 	while($row = mysqli_fetch_row($keyword_top_query)){
-		$keyword_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."'),";
+		$keyword_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
 	mysqli_free_result($keyword_top_query);
 	$keyword_insert_sql = substr($keyword_insert_sql, 0, -1);
@@ -213,9 +216,9 @@ if(empty($row)){
 	//搜索关键字次数排名前10的ip
 	$keyword_topip_sql = "SELECT ip , count(id) as num FROM `log_keyword_temp` GROUP BY ip ORDER BY num DESC limit 0,10";
 	$keyword_topip_query = mysqli_query($connect, $keyword_topip_sql);
-	$k_ip_insert_sql = "INSERT keyword_top_10_ip(`ip`, `num`, `created`) VALUES";
+	$k_ip_insert_sql = "INSERT keyword_top_10_ip(`ip`, `num`, `created`, `statis_date`) VALUES";
 	while($row = mysqli_fetch_row($keyword_topip_query)){
-		$k_ip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."'),";
+		$k_ip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
 	mysqli_free_result($keyword_topip_query);
 	$k_ip_insert_sql = substr($k_ip_insert_sql, 0, -1);
@@ -223,10 +226,10 @@ if(empty($row)){
 	//排名前10的guid
 	$id_top_sql = "SELECT guid, num FROM id_count ORDER BY num  DESC LIMIT 0, 10"; 
 	$id_top_query = mysqli_query($connect, $id_top_sql);
-	$id_insert_sql = "INSERT id_top_10(`title`, `guid`, `num`, `created`) VALUES"; 
+	$id_insert_sql = "INSERT id_top_10(`title`, `guid`, `num`, `created`, `statis_date`) VALUES"; 
 	while($row = mysqli_fetch_row($id_top_query)){
 		$row[2] = getTitleByguid($row[0]);
-		$id_insert_sql .= " ('".$row[2]."','".$row[0]."', '".$row[1]."', '".$datetime."'),";
+		$id_insert_sql .= " ('".$row[2]."','".$row[0]."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
 	mysqli_free_result($id_top_query);
 	$id_insert_sql = substr($id_insert_sql, 0, -1);
@@ -234,9 +237,9 @@ if(empty($row)){
 	//搜索guid次数排名前10的ip
 	$id_topip_sql = "SELECT ip , count(id) as num FROM `log_id_temp` GROUP BY ip ORDER BY num DESC limit 0,10";
 	$id_topip_query = mysqli_query($connect, $id_topip_sql);
-	$i_ip_insert_sql = "INSERT id_top_10_ip(`ip`, `num`, `created`) VALUES";
+	$i_ip_insert_sql = "INSERT id_top_10_ip(`ip`, `num`, `created`, `statis_date`) VALUES";
 	while($row = mysqli_fetch_row($id_topip_query)){
-		$i_ip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."'),";
+		$i_ip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
 	mysqli_free_result($id_topip_query);
 	$i_ip_insert_sql = substr($i_ip_insert_sql, 0, -1);
@@ -244,9 +247,9 @@ if(empty($row)){
 	//排名前30的ip
 	$ip_top_sql = "SELECT ip, keyword, guid, num FROM ip_count ORDER BY num  DESC LIMIT 0, 30"; 
 	$ip_top_query = mysqli_query($connect, $ip_top_sql);
-	$ip_insert_sql = "INSERT ip_top_30(`ip`, `keyword`, `guid`, `num`, `created`) VALUES"; 
+	$ip_insert_sql = "INSERT ip_top_30(`ip`, `keyword`, `guid`, `num`, `created`, `statis_date`) VALUES"; 
 	while($row = mysqli_fetch_row($ip_top_query)){
-		$ip_insert_sql .= " ('".$row[0]."','".$row[1]."', '".$row[2]."', '".$row[3]."', '".$datetime."'),";
+		$ip_insert_sql .= " ('".$row[0]."','".$row[1]."', '".$row[2]."', '".$row[3]."', '".$datetime."', '".$thatDate."'),";
 	}
 	mysqli_free_result($ip_top_query);
 	$ip_insert_sql = substr($ip_insert_sql, 0, -1);
@@ -259,11 +262,11 @@ if(empty($row)){
 	mysqli_query($connect, $i_ip_insert_sql);
 	mysqli_query($connect, $ip_insert_sql);
 	//清空以下数据表
-	/*mysqli_query($connect, "TRUNCATE log_id_temp");
+	mysqli_query($connect, "TRUNCATE log_id_temp");
 	mysqli_query($connect, "TRUNCATE log_keyword_temp");
 	mysqli_query($connect, "TRUNCATE ip_count");
 	mysqli_query($connect, "TRUNCATE id_count");
-	mysqli_query($connect, "TRUNCATE keyword_count");*/
+	mysqli_query($connect, "TRUNCATE keyword_count");
 	if(mysqli_errno($connect)){
 		mysqli_query($connect, "ROLLBACK");
 	}else{
@@ -272,7 +275,7 @@ if(empty($row)){
 		echo $datetime." 数据入库成功";exit;
 	}
 }else{
-	echo $date."数据已统计";exit;
+	echo $thatDate."数据已统计";exit;
 }
 //根据guid获取title
 function getTitleByguid($guid = ''){

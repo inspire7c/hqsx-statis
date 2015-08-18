@@ -3,52 +3,47 @@
     $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
     mysqli_query($connect,'SET NAMES utf8');
     $date = date("Y-m-d");
+    $thatDate = @$_REQUEST['date'] ? $_REQUEST['date'] : $date;//2015-08-17
     //今日关键字搜索、guid搜索、独立ip搜索的次数
-    $today_nums_sql = "SELECT keyword_nums, guid_nums, ip_nums FROM today_statis WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."'"; 
+    $today_nums_sql = "SELECT keyword_nums, guid_nums, ip_nums FROM today_statis WHERE statis_date = '".$thatDate."'"; 
     $today_nums_query = mysqli_query($connect, $today_nums_sql); 
     $today_nums_result = mysqli_fetch_assoc($today_nums_query);
     mysqli_free_result($today_nums_query);
-    /*print_r($today_nums_result);exit;*/
+    if(empty($today_nums_result)){
+      echo json_encode(array("code" => '0', "msg" => "没有查询到".$thatDate."的统计结果"));exit;
+    }
 
     //搜索前10的关键字
-    $keyword_top_sql = "SELECT keyword, num FROM keyword_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC";
+    $keyword_top_sql = "SELECT keyword, num FROM keyword_top_10 WHERE statis_date = '".$thatDate."' ORDER BY num DESC";
     $keyword_top_query = mysqli_query($connect, $keyword_top_sql); 
     while($row = mysqli_fetch_assoc($keyword_top_query)){
       $keyword_top_result[] = $row;
     }
     mysqli_free_result($keyword_top_query);
-    /*echo "<pre>";
-    print_r($keyword_top_result);exit;*/
 
     //搜索关键字前10的ip
-    $k_ip_top_sql = "SELECT ip, num FROM keyword_top_10_ip WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC";
+    $k_ip_top_sql = "SELECT ip, num FROM keyword_top_10_ip WHERE statis_date = '".$thatDate."' ORDER BY num DESC";
     $k_ip_top_query = mysqli_query($connect, $k_ip_top_sql); 
     while($row = mysqli_fetch_assoc($k_ip_top_query)){
       $k_ip_top_result[] = $row;
     }
     mysqli_free_result($k_ip_top_query);
-    /*echo "<pre>";
-    print_r($k_ip_top_result);exit;*/
 
     //搜索前10的guid
-    $id_top_sql = "SELECT title, guid, num FROM id_top_10 WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC"; 
+    $id_top_sql = "SELECT title, guid, num FROM id_top_10 WHERE statis_date = '".$thatDate."' ORDER BY num DESC"; 
     $id_top_query = mysqli_query($connect, $id_top_sql); 
      while($row = mysqli_fetch_assoc($id_top_query)){
       $id_top_result[] = $row;
     }
     mysqli_free_result($id_top_query);
-    /*echo "<pre>";
-    print_r($id_top_result);exit;*/
 
     //搜索guid前10的ip
-    $id_ip_top_sql = "SELECT ip, num FROM id_top_10_ip WHERE DATE_FORMAT(created,'%Y-%m-%d') = '".$date."' ORDER BY num DESC"; 
+    $id_ip_top_sql = "SELECT ip, num FROM id_top_10_ip WHERE statis_date = '".$thatDate."' ORDER BY num DESC"; 
     $id_ip_top_query = mysqli_query($connect, $id_ip_top_sql);  
      while($row = mysqli_fetch_assoc($id_ip_top_query)){
       $id_ip_top_result[] = $row;
     }
     mysqli_free_result($id_ip_top_query);
-    /*echo "<pre>";
-    print_r($id_ip_top_result);exit;*/
 ?>
 <!doctype html>
 <html lang="en">
@@ -75,7 +70,7 @@
  <body>
   <div class="main">
     <div>
-      <div class="title"><?php echo date("Y-m-d");?>环球视讯数据统计</div>
+      <div class="title"><?php echo $thatDate;?>环球视讯数据统计</div>
       <table>
           <tr>
             <td class="text_title">今日独立ip搜索查询的次数</td><td><?php if(isset($today_nums_result['ip_nums'])){ echo $today_nums_result['ip_nums'];}else{ echo "无";}?></td>
