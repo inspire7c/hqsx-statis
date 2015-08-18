@@ -176,7 +176,7 @@ while(!feof($fp)){
 	$i++;
 }
 fclose($fp);
-unlink($file_path);
+//unlink($file_path);//删除文件
 }
 //数据统计入库
 $sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
