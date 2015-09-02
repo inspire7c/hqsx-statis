@@ -1,4 +1,5 @@
 <?php
+    set_time_limit(0);
     header("Content-type:text/html;charset=utf-8");
     $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
     mysqli_query($connect,'SET NAMES utf8');

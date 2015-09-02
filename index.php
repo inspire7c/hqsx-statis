@@ -10,7 +10,7 @@ if ($configArray === false) {
 $today = date("Ymd");
 $date = date("Y-m-d");
 $datetime = date("Y-m-d H:i:s");
-$thatDate = @$_REQUEST['date'];//2015-08-17
+$thatDate = @$_REQUEST['date'] ? $_REQUEST['date'] : $date;//2015-08-17
 $file_date = $thatDate ? date("Ymd", strtotime($thatDate)) : $today;
 $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
 mysqli_query($connect,'SET NAMES utf8');
@@ -437,8 +437,18 @@ if(empty($row)){
 		mysqli_query($connect, "ROLLBACK");
 	}else{
 		mysqli_query($connect, "COMMIT");
-		mysqli_close($connect);
-		echo $datetime." 数据入库成功";exit;
+		
+		$sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
+		$query = mysqli_query($connect, $sql); 
+		$row = mysqli_fetch_row($query);
+		if(!empty($row)){
+			foreach($log_list as $key => $value){
+				@unlink($value);
+			}
+			mysqli_close($connect);
+			echo $datetime." 数据入库成功";exit;
+		}
+		echo $datetime." 数据入库失败";exit;
 	}
 }else{
 	echo $thatDate."数据已统计";exit;
