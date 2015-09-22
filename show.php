@@ -9,7 +9,7 @@
     $today_nums_sql = "SELECT keyword_nums, k_source_count, guid_nums, g_source_count, ip_nums, flip_count, flip_count_true FROM today_statis WHERE statis_date = '".$thatDate."'"; 
     $today_nums_query = mysqli_query($connect, $today_nums_sql); 
     $today_nums_result = mysqli_fetch_assoc($today_nums_query);
-    mysqli_free_result($today_nums_query);
+    @mysqli_free_result($today_nums_query);
     if(empty($today_nums_result)){
       echo json_encode(array("code" => '0', "msg" => "没有查询到".$thatDate."的统计结果"));exit;
     }
@@ -23,7 +23,7 @@
       $row['source_count'] = getSource($row['source_count']);
       $keyword_top_result[] = $row;
     }
-    mysqli_free_result($keyword_top_query);
+    @mysqli_free_result($keyword_top_query);
 
     //搜索关键字次数排名前10的ip
     $k_ip_top_sql = "SELECT ip, keyword, num FROM keyword_top_10_ip WHERE statis_date = '".$thatDate."' ORDER BY num DESC";
@@ -31,7 +31,7 @@
     while($row = mysqli_fetch_assoc($k_ip_top_query)){
       $k_ip_top_result[] = $row;
     }
-    mysqli_free_result($k_ip_top_query);
+    @mysqli_free_result($k_ip_top_query);
 
     //搜索关键字翻页次数排名前10的ip
     $k_flip_top_sql = "SELECT ip, keyword, start_page FROM keyword_flip_top_10 WHERE statis_date = '".$thatDate."' ORDER BY start_page DESC";
@@ -39,7 +39,7 @@
     while($row = mysqli_fetch_assoc($k_flip_top_query)){
       $k_flip_top_result[] = $row;
     }
-    mysqli_free_result($k_flip_top_query);
+    @mysqli_free_result($k_flip_top_query);
 
     //搜索前10的guid
     $id_top_sql = "SELECT title, guid, num, source_count FROM id_top_10 WHERE statis_date = '".$thatDate."' ORDER BY num DESC"; 
@@ -48,7 +48,7 @@
       $row['source_count'] = getSource($row['source_count']);
       $id_top_result[] = $row;
     }
-    mysqli_free_result($id_top_query);
+    @mysqli_free_result($id_top_query);
 
     //查看guid次数排名前10的ip
     $id_ip_top_sql = "SELECT ip, num FROM id_top_10_ip WHERE statis_date = '".$thatDate."' ORDER BY num DESC"; 
@@ -56,7 +56,7 @@
      while($row = mysqli_fetch_assoc($id_ip_top_query)){
       $id_ip_top_result[] = $row;
     }
-    mysqli_free_result($id_ip_top_query);
+    @mysqli_free_result($id_ip_top_query);
 
     //搜过关键字+查看guid次数排名前30的ip
     $ip_top_sql = "SELECT ip, keyword, guid, num FROM ip_top_30 WHERE statis_date = '".$thatDate."' ORDER BY num DESC"; 
@@ -65,7 +65,7 @@
         $row['guid'] = unserialize($row['guid']);
         $ip_top_result[] = $row;
     }
-    mysqli_free_result($ip_top_query);
+    @mysqli_free_result($ip_top_query);
 
 //根据guid获取title
 function getTitleByguid($guid = ''){
@@ -126,11 +126,11 @@ function getSource($source = ''){
     <link rel="stylesheet" type="text/css" href="css.css" />
     <style>
     body{ background:#fff; font-size:16px; font-family:"Microsoft YaHei"}
-    .main{ width:900px; height:auto; margin: 0 auto; border:2px solid #ccc;}
+    .main{ width:1200px; height:auto; margin: 0 auto; border:2px solid #ccc;}
     .main .title{ text-align: center; font-size: 24px; margin:30px auto;}
-    .main table{ width:800px; background: #f9eee8; margin: 0 auto; border-collapse:collapse; border-spacing: 0; text-align: center}
+    .main table{ width:1100px; /*background: #f9eee8;*/ margin: 0 auto; border-collapse:collapse; border-spacing: 0; text-align: center}
     table tr{ height:30px; line-height: 30px;}
-    table td{ width:300px; border: 1px solid #fff;}
+    table td{ width:300px; border: 1px solid #000;}
     table .text_title{ text-align: left; padding:5px 0 5px 20px;}
     table .keyword{ font-size: 14px;}
     table .wordleft{ text-align: left; padding-left:20px;}
@@ -142,6 +142,7 @@ function getSource($source = ''){
   <div class="main">
     <div>
       <div class="title"><?php echo $thatDate;?>环球视讯数据统计</div>
+      <a href="index.html" style="float:right; margin:0 50px 10px 0;font-size:16px; color:red;">选择日期</a>
       <table>
           <tr>
             <td colspan="2" class="text_title">今日独立ip搜索查询的次数</td><td  colspan="2"><?php if(isset($today_nums_result['ip_nums'])){ echo $today_nums_result['ip_nums'];}else{ echo "无";}?></td>
@@ -275,9 +276,9 @@ function getSource($source = ''){
             <td class="wordleft"><?=$v['ip']?></td>
             <td><?=$v['keyword']?></td>
             <td><ul>
-                    <?php foreach($v['guid'] as $key => $value){ ?>
-                    <li style='list-style:none;'><?=$key+1;?>. <a href="http://web.newsapp.cibntv.net/app/play/?id=<?=$value['guid']?>"><?=$value['title']?></a></li>
-                    <?php }?>
+                    <?php foreach($v['guid'] as $key => $value){
+                      echo ($key+1).".".$value['title']."<br />";
+                    }?>
                     </ul>
             </td>
             <td><?=$v['num']?></td>

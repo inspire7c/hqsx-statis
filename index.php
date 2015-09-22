@@ -4,21 +4,22 @@ date_default_timezone_set('Asia/shanghai');
 header("Content-type:text/html;charset=utf-8");
 $configPath = 'config.ini';
 $configArray = parse_ini_file($configPath, true);
-if ($configArray === false) {
-    echo json_encode(array("code" => 0, 'msg' => "配置文件读取失败"));exit;
-}
 $today = date("Ymd");
 $date = date("Y-m-d");
 $datetime = date("Y-m-d H:i:s");
 $thatDate = @$_REQUEST['date'] ? $_REQUEST['date'] : $date;//2015-08-17
 $file_date = $thatDate ? date("Ymd", strtotime($thatDate)) : $today;
+if ($configArray === false) {
+    echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => '配置文件读取失败')) . '\n';exit;
+}
+
 $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
 mysqli_query($connect,'SET NAMES utf8');
 $sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
 $query = mysqli_query($connect, $sql); 
-$row = mysqli_fetch_row($query);
+$row = @mysqli_fetch_row($query);
 if(!empty($row)){
-	echo $thatDate."数据已统计";exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . '数据已统计')) . '\n';exit;
 }
 //遍历该目录下的.log文件
 $log_dir_path = '/opt/host/hqsxlog/';
@@ -26,7 +27,7 @@ $log_list = listDir($log_dir_path, $file_date);
 function listDir($dir, $file_date){
     static $result_array = array();
     if(!is_dir($dir)){
-    	echo json_encode(array("code" => 0, 'msg' => $dir."目录不存在"));exit;
+    	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $dir . '目录不存在')) . '\n';exit;
     }
     if ($dh = opendir($dir)){
     	while (($file = readdir($dh)) !== false){
@@ -51,26 +52,29 @@ function listDir($dir, $file_date){
 /*echo "<pre>";
 print_r($log_list);exit;*/
 if(empty($log_list)){
-	echo json_encode(array("code" => 0, 'msg' => $log_dir_path."下没有符合的日志文件"));exit;
+	exec("/bin/bash /opt/host/hqsxlog/bin/ngx-log-sync-day.sh", $array, $return);
+	if($return == 1){
+		echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $log_dir_path . '下没有符合的日志文件')) . '\n';exit;
+	}
 }
 foreach($log_list as $key => $value){
 $file_path = $value;
 if (file_exists($file_path) == false) {
-	echo json_encode(array("code" => 0, 'msg' => $file_path."文件不存在"));exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件不存在')) . '\n';exit;
 }
 if (is_readable($file_path) == false) {
-	echo json_encode(array("code" => 0, 'msg' => $file_path."文件不可读"));exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件不可读')) . '\n';exit;
 }
 $fp = fopen($file_path, "r");
 if($fp == false){
-	echo json_encode(array("code" => 0, 'msg' => $file_path."文件打开失败"));exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件打开失败')) . '\n';exit;
  }
 if(filesize($file_path) == false){
-	echo json_encode(array("code" => 0, 'msg' => $file_path."文件内容为空"));exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件内容为空')) . '\n';exit;
 }
 $i = 1;
-while(!feof($fp)){
-  	$line = fgets($fp);
+while(!@feof($fp)){
+  	$line = @fgets($fp);
 	if(empty($line)){
 		continue;
 	}
@@ -123,13 +127,13 @@ while(!feof($fp)){
 			}
 			$keyword_sql = "SELECT id, ip, start_page FROM `log_keyword_temp` WHERE ip = '".$keyword_arr['ip']."' AND keyword = '".$keyword_arr['keyword']."' LIMIT 1";
 			$keyword_query = mysqli_query($connect, $keyword_sql); 
-			$keyword_row = mysqli_fetch_row($keyword_query);
-			mysqli_free_result($keyword_query);
+			$keyword_row = @mysqli_fetch_row($keyword_query);
+			@mysqli_free_result($keyword_query);
 			if(empty($keyword_row)){
 				$ip_count_sql = "SELECT id, ip, keyword FROM `ip_count` WHERE ip = '".$keyword_arr['ip']."' LIMIT 1";
 				$ip_count_query = mysqli_query($connect, $ip_count_sql); 
-				$ip_count_row = mysqli_fetch_row($ip_count_query);
-				mysqli_free_result($ip_count_query);
+				$ip_count_row = @mysqli_fetch_row($ip_count_query);
+				@mysqli_free_result($ip_count_query);
 				if(empty($ip_count_row)){
 					$ip_sql = "INSERT ip_count(`ip`, `keyword`, `num`) VALUES ('".$keyword_arr['ip']."', '".$keyword_arr['keyword']."', 1)";
 				}else if($ip_count_row[2] == NULL){
@@ -141,8 +145,8 @@ while(!feof($fp)){
 				
 				$keyword_count_sql = "SELECT id FROM `keyword_count` WHERE keyword = '".$keyword_arr['keyword']."' LIMIT 1";
 				$keyword_count_query = mysqli_query($connect, $keyword_count_sql);
-				$keyword_count_row = mysqli_fetch_row($keyword_count_query);
-				mysqli_free_result($keyword_count_query);
+				$keyword_count_row = @mysqli_fetch_row($keyword_count_query);
+				@mysqli_free_result($keyword_count_query);
 				if(!empty($keyword_count_row)){
 					$keyword_exe_sql = "UPDATE `keyword_count` SET `num` = num + 1 WHERE id = ".$keyword_count_row[0];
 				}else{
@@ -156,7 +160,7 @@ while(!feof($fp)){
 					mysqli_query($connect, "ROLLBACK");
 				}else{
 					mysqli_query($connect, "COMMIT");
-					echo "第".$i."行执行成功\n";	
+					//echo "第".$i."行执行成功\n";	
 				}	
 			}else{
 				if(!empty($keyword_arr['startPage']) && !empty($keyword_row[2]) && ($keyword_arr['startPage'] > $keyword_row[2])){
@@ -166,7 +170,7 @@ while(!feof($fp)){
 						mysqli_query($connect, "ROLLBACK");
 					}else{
 						mysqli_query($connect, "COMMIT");
-						echo "第".$i."行执行成功\n";	
+						//echo "第".$i."行执行成功\n";	
 					}	
 				}else{
 					continue;
@@ -203,13 +207,13 @@ while(!feof($fp)){
 			}
 			$id_sql = "SELECT id, ip FROM `log_id_temp` WHERE ip = '".$id_arr['ip']."' AND guid = '".$id_arr['id']."' LIMIT 1";
 			$id_query = mysqli_query($connect, $id_sql); 
-			$id_row = mysqli_fetch_row($id_query);
-			mysqli_free_result($id_query);
+			$id_row = @mysqli_fetch_row($id_query);
+			@mysqli_free_result($id_query);
 			if(empty($id_row)){
 				$ip_count_sql = "SELECT id, ip, guid FROM `ip_count` WHERE ip = '".$id_arr['ip']."' LIMIT 1";
 				$ip_count_query = mysqli_query($connect, $ip_count_sql); 
-				$ip_count_row = mysqli_fetch_row($ip_count_query);
-				mysqli_free_result($ip_count_query);
+				$ip_count_row = @mysqli_fetch_row($ip_count_query);
+				@mysqli_free_result($ip_count_query);
 				if(empty($ip_count_row)){
 					$ip_sql = "INSERT ip_count(`ip`, `guid`, `num`) VALUES ('".$id_arr['ip']."', '".$id_arr['id']."', 1)";
 				}else if($ip_count_row[2] == NULL){
@@ -222,8 +226,8 @@ while(!feof($fp)){
 				
 				$id_count_sql = "SELECT id, guid FROM `id_count` WHERE guid = '".$id_arr['id']."' LIMIT 1";
 				$id_count_query = mysqli_query($connect, $id_count_sql); 
-				$id_count_row = mysqli_fetch_row($id_count_query);
-				mysqli_free_result($id_count_query);
+				$id_count_row = @mysqli_fetch_row($id_count_query);
+				@mysqli_free_result($id_count_query);
 				if(!empty($id_count_row)){
 					$id_exe_sql = "UPDATE `id_count` SET `num` = num + 1 WHERE id='".$id_count_row[0]."'";
 				}else{
@@ -238,7 +242,7 @@ while(!feof($fp)){
 					mysqli_query($connect, "ROLLBACK");
 				}else{
 					mysqli_query($connect, "COMMIT");
-					echo "第".$i."行执行成功\n";
+					//echo "第".$i."行执行成功\n";
 				}
 			}
 		}else{
@@ -250,65 +254,64 @@ while(!feof($fp)){
 	$i++;
 }
 fclose($fp);
-//unlink($file_path);//删除文件
 }
 /*echo "<pre>";
 print_r($keywordArr);exit;*/
 //数据统计入库
 $sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
 $query = mysqli_query($connect, $sql); 
-$row = mysqli_fetch_row($query);
-mysqli_free_result($query);
+$row = @mysqli_fetch_row($query);
+@mysqli_free_result($query);
 if(empty($row)){
 	//搜索关键字次数统计
 	$keyword_nums_sql = "SELECT SUM(num) FROM keyword_count"; 
 	$keyword_nums_query = mysqli_query($connect, $keyword_nums_sql); 
-	$keyword_nums_result = mysqli_fetch_row($keyword_nums_query);
-	mysqli_free_result($keyword_nums_query);
+	$keyword_nums_result = @mysqli_fetch_row($keyword_nums_query);
+	@mysqli_free_result($keyword_nums_query);
 
 	//搜索关键字的source次数统计
 	$keyword_source_sql = "SELECT source, count(id) FROM log_keyword_temp GROUP BY source"; 
 	$keyword_source_query = mysqli_query($connect, $keyword_source_sql); 
 	$k_string = "";  
-	while($row = mysqli_fetch_row($keyword_source_query)){
+	while($row = @mysqli_fetch_row($keyword_source_query)){
 		$k_string .= $row[0].':'.$row[1].',';
 	}
-	mysqli_free_result($keyword_source_query);
+	@mysqli_free_result($keyword_source_query);
 	$k_source_count = substr($k_string, 0, -1);
 
 	//统计搜索翻页次数
 	$keyword_flip_sql = "SELECT count(id) FROM log_keyword_temp WHERE start_page != 0";  
 	$keyword_flip_query = mysqli_query($connect, $keyword_flip_sql);  
-	$keyword_flip_result = mysqli_fetch_row($keyword_flip_query);
-	mysqli_free_result($keyword_flip_query);
+	$keyword_flip_result = @mysqli_fetch_row($keyword_flip_query);
+	@mysqli_free_result($keyword_flip_query);
 
 	//统计搜索有效翻页次数
 	$k_flip_sql = "SELECT count(id) FROM log_keyword_temp WHERE start_page not in(0,1)";  
 	$k_flip_query = mysqli_query($connect, $k_flip_sql);  
-	$k_flip_result = mysqli_fetch_row($k_flip_query);
-	mysqli_free_result($k_flip_query);
+	$k_flip_result = @mysqli_fetch_row($k_flip_query);
+	@mysqli_free_result($k_flip_query);
 
 	//搜索guid次数统计
 	$id_nums_sql = "SELECT SUM(num) FROM id_count";  
 	$id_nums_query = mysqli_query($connect, $id_nums_sql);  
-	$id_nums_result = mysqli_fetch_row($id_nums_query);
-	mysqli_free_result($id_nums_query);
+	$id_nums_result = @mysqli_fetch_row($id_nums_query);
+	@mysqli_free_result($id_nums_query);
 
 	//搜索guid的source次数统计
 	$id_source_sql = "SELECT source, count(id) FROM log_id_temp GROUP BY source"; 
 	$id_source_query = mysqli_query($connect, $id_source_sql); 
 	$id_string = "";  
-	while($row = mysqli_fetch_row($id_source_query)){
+	while($row = @mysqli_fetch_row($id_source_query)){
 		$id_string .= $row[0].':'.$row[1].',';
 	}
-	mysqli_free_result($id_source_query);
+	@mysqli_free_result($id_source_query);
 	$id_source_count = substr($id_string, 0, -1);
 
 	//独立ip次数统计
 	$ip_nums_sql = "SELECT count(id) FROM ip_count";  
 	$ip_nums_query = mysqli_query($connect, $ip_nums_sql);  
-	$ip_nums_result = mysqli_fetch_row($ip_nums_query);
-	mysqli_free_result($ip_nums_query);
+	$ip_nums_result = @mysqli_fetch_row($ip_nums_query);
+	@mysqli_free_result($ip_nums_query);
 	
 	//今日数据
 	$today_sql = "INSERT today_statis(`keyword_nums`, `k_source_count`, `guid_nums`, `g_source_count`, `ip_nums`, `flip_count`, `flip_count_true`, `created`, `statis_date`) VALUES ('".$keyword_nums_result[0]."', '".$k_source_count."', '".$id_nums_result[0]."', '".$id_source_count."', '".$ip_nums_result[0]."', '".$keyword_flip_result[0]."', '".$k_flip_result[0]."', '".$datetime."', '".$thatDate."')";
@@ -317,15 +320,15 @@ if(empty($row)){
 	$keyword_top_sql = "SELECT keyword, num FROM keyword_count ORDER BY num DESC LIMIT 0, {$configArray['keyword_top_n']}";
 	$keyword_top_query = mysqli_query($connect, $keyword_top_sql);
 	$keyword_insert_sql = "INSERT keyword_top_10(`keyword`, `num`, `source_count`, `created`, `statis_date`) VALUES";
-	while($row = mysqli_fetch_row($keyword_top_query)){
+	while($row = @mysqli_fetch_row($keyword_top_query)){
 		//查询关键字的来源并做统计
 		$k_sql = "SELECT source, count(id) FROM log_keyword_temp WHERE keyword = '".$row[0]."' GROUP BY source";
 		$k_query = mysqli_query($connect, $k_sql);
 		$k_s_string = "";
-		while($row3 = mysqli_fetch_row($k_query)){
+		while($row3 = @mysqli_fetch_row($k_query)){
 			$k_s_string .= $row3[0].':'.$row3[1].',';
 		}
-		mysqli_free_result($k_query);
+		@mysqli_free_result($k_query);
 		$k_s_count = substr($k_s_string, 0, -1);
 
 		$keyword_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$k_s_count."', '".$datetime."', '".$thatDate."'),";
@@ -338,74 +341,74 @@ if(empty($row)){
 			$keyword_to_ip_sql = "INSERT keyword_to_ip(`keyword`, `ip`, `city`, `source`, `created`, `statis_date`) VALUES ('".$row[0]."', '".$row2['ip']."', '".$city."', '".$row2['source']."', '".$datetime."', '".$thatDate."')";
 			$keyword_to_ip_query = mysqli_query($connect, $keyword_to_ip_sql);
 		}
-		mysqli_free_result($keyword_ip_query);
+		@mysqli_free_result($keyword_ip_query);
 	}
-	mysqli_free_result($keyword_top_query);
+	@mysqli_free_result($keyword_top_query);
 	$keyword_insert_sql = substr($keyword_insert_sql, 0, -1);
 
 	//搜索关键字次数排名前10的ip
 	$keyword_topip_sql = "SELECT ip , count(id) as num FROM `log_keyword_temp` GROUP BY ip ORDER BY num DESC limit 0, {$configArray['keyword_top_n_ip']}";
 	$keyword_topip_query = mysqli_query($connect, $keyword_topip_sql);
 	$k_ip_insert_sql = "INSERT keyword_top_10_ip(`ip`, `keyword`, `num`, `created`, `statis_date`) VALUES";
-	while($row = mysqli_fetch_row($keyword_topip_query)){
+	while($row = @mysqli_fetch_row($keyword_topip_query)){
 		$get_keyword_sql = "SELECT keyword FROM `log_keyword_temp` WHERE ip = '".$row[0]."'";
 		$get_keyword_query = mysqli_query($connect, $get_keyword_sql);
 		$keyword_string = "";
-		while($row2 = mysqli_fetch_row($get_keyword_query)){
+		while($row2 = @mysqli_fetch_row($get_keyword_query)){
 			$keyword_string .= $row2[0].',';
 		}
 		$keyword_string = substr($keyword_string, 0, -1);
 		$k_ip_insert_sql .= " ('".$row[0]."', '".$keyword_string."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
-	mysqli_free_result($keyword_topip_query);
+	@mysqli_free_result($keyword_topip_query);
 	$k_ip_insert_sql = substr($k_ip_insert_sql, 0, -1);
 
 	//搜索关键字翻页次数排名前10的ip
 	$keyword_tflip_sql = "SELECT ip , keyword, start_page FROM `log_keyword_temp` ORDER BY start_page DESC limit 0, {$configArray['keyword_flip_top_n']}";
 	$keyword_tflip_query = mysqli_query($connect, $keyword_tflip_sql);
 	$k_flip_insert_sql = "INSERT keyword_flip_top_10(`ip`, `keyword`, `start_page`,`created`, `statis_date`) VALUES";
-	while($row = mysqli_fetch_row($keyword_tflip_query)){
+	while($row = @mysqli_fetch_row($keyword_tflip_query)){
 		$k_flip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$row[2]."', '".$datetime."', '".$thatDate."'),";
 	}
-	mysqli_free_result($keyword_tflip_query);
+	@mysqli_free_result($keyword_tflip_query);
 	$k_flip_insert_sql = substr($k_flip_insert_sql, 0, -1);
 
 	//排名前10的guid
 	$id_top_sql = "SELECT guid, num FROM id_count ORDER BY num  DESC LIMIT 0, {$configArray['guid_top_n']}"; 
 	$id_top_query = mysqli_query($connect, $id_top_sql);
 	$id_insert_sql = "INSERT id_top_10(`title`, `guid`, `num`, `source_count`, `created`, `statis_date`) VALUES"; 
-	while($row = mysqli_fetch_row($id_top_query)){
+	while($row = @mysqli_fetch_row($id_top_query)){
 		//查询guid的来源并做统计
 		$i_sql = "SELECT source, count(id) FROM log_id_temp WHERE guid = '".$row[0]."' GROUP BY source";
 		$i_query = mysqli_query($connect, $i_sql);
 		$i_s_string = "";
-		while($row2 = mysqli_fetch_row($i_query)){
+		while($row2 = @mysqli_fetch_row($i_query)){
 			$i_s_string .= $row2[0].':'.$row2[1].',';
 		}
-		mysqli_free_result($i_query);
+		@mysqli_free_result($i_query);
 		$i_s_count = substr($i_s_string, 0, -1);
 
 		$row[2] = getTitleByguid($row[0]);
 		$id_insert_sql .= " ('".$row[2]."','".$row[0]."', '".$row[1]."', '".$i_s_count."', '".$datetime."', '".$thatDate."'),";
 	}
-	mysqli_free_result($id_top_query);
+	@mysqli_free_result($id_top_query);
 	$id_insert_sql = substr($id_insert_sql, 0, -1);
 
 	//搜索guid次数排名前10的ip
 	$id_topip_sql = "SELECT ip , count(id) as num FROM `log_id_temp` GROUP BY ip ORDER BY num DESC limit 0, {$configArray['guid_top_n_ip']}";
 	$id_topip_query = mysqli_query($connect, $id_topip_sql);
 	$i_ip_insert_sql = "INSERT id_top_10_ip(`ip`, `num`, `created`, `statis_date`) VALUES";
-	while($row = mysqli_fetch_row($id_topip_query)){
+	while($row = @mysqli_fetch_row($id_topip_query)){
 		$i_ip_insert_sql .= " ('".$row[0]."', '".$row[1]."', '".$datetime."', '".$thatDate."'),";
 	}
-	mysqli_free_result($id_topip_query);
+	@mysqli_free_result($id_topip_query);
 	$i_ip_insert_sql = substr($i_ip_insert_sql, 0, -1);
 
 	//排名前30的ip
 	$ip_top_sql = "SELECT ip, keyword, guid, num FROM ip_count ORDER BY num  DESC LIMIT 0, {$configArray['ip_top_n']}"; 
 	$ip_top_query = mysqli_query($connect, $ip_top_sql);
 	$ip_insert_sql = "INSERT ip_top_30(`ip`, `keyword`, `guid`, `num`, `created`, `statis_date`) VALUES"; 
-	while($row = mysqli_fetch_row($ip_top_query)){
+	while($row = @mysqli_fetch_row($ip_top_query)){
 		$guidInfo = array();
 		$guidArr = explode(",", $row[2]);
 		foreach($guidArr as $k => $v){
@@ -416,7 +419,7 @@ if(empty($row)){
 		$ip_insert_sql .= " ('".$row[0]."','".$row[1]."', '".$guid."', '".$row[3]."', '".$datetime."', '".$thatDate."'),";
 		unset($guidInfo);
 	}
-	mysqli_free_result($ip_top_query);
+	@mysqli_free_result($ip_top_query);
 	$ip_insert_sql = substr($ip_insert_sql, 0, -1);
 
 	mysqli_query($connect, "START TRANSACTION");
@@ -440,31 +443,44 @@ if(empty($row)){
 		
 		$sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'"; 
 		$query = mysqli_query($connect, $sql); 
-		$row = mysqli_fetch_row($query);
+		$row = @mysqli_fetch_row($query);
 		if(!empty($row)){
 			foreach($log_list as $key => $value){
 				@unlink($value);
 			}
 			mysqli_close($connect);
-			echo $datetime." 数据入库成功";exit;
+			echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . '数据入库成功')) . '\n';exit;
 		}
-		echo $datetime." 数据入库失败";exit;
+		echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $thatDate . '数据入库失败')) . '\n';exit;
 	}
 }else{
-	echo $thatDate."数据已统计";exit;
+	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . "数据已统计")) . '\n';exit;
 }
 //根据guid获取title
 function getTitleByguid($guid = ''){
-  $httpurl = "http://www.tvm.cn/share/search.php?guid=".$guid."&action=guid";
+  $httpurl = "";
+  if(is_numeric($guid)){
+  	$httpurl = "http://api.saas.tvm.cn/share/getbyid.php?topicid=".$guid;
+  }else{
+  	$httpurl = "http://www.tvm.cn/share/search.php?guid=".$guid."&action=guid";
+  }
   $json_data = file_get_contents($httpurl);
   if(empty($json_data)){
-    echo json_encode(array("code" => '0', 'msg' => $guid.'请求获取title失败'));
+    echo date("Y-m-d H:i:s") . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => '0', 'msg' => $guid . '请求获取title失败')) . '\n';
   }
   $arr_data = json_decode($json_data, true);
-  if(isset($arr_data['feed']['entry'])){
-    $title = $arr_data['feed']['entry']['title']['$t'];
+  if(is_numeric($guid)){
+  	if(isset($arr_data['sharetitle'])){
+  		$title = $arr_data['sharetitle'];
+  	}else{
+	    	$title = "";
+	}
   }else{
-    $title = "";
+  	if(isset($arr_data['feed']['entry'])){
+  		$title = $arr_data['feed']['entry']['title']['$t'];
+  	}else{
+	    	$title = "";
+	}
   }
   return $title;
 }
