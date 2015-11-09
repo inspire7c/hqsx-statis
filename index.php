@@ -10,7 +10,7 @@ $datetime = date("Y-m-d H:i:s");
 $thatDate = @$_REQUEST['date'] ? $_REQUEST['date'] : $date;//2015-08-17
 $file_date = $thatDate ? date("Ymd", strtotime($thatDate)) : $today;
 if ($configArray === false) {
-    echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => '配置文件读取失败')) . '\n';exit;
+    echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => '配置文件读取失败')) . "\n";exit;
 }
 
 $connect = mysqli_connect('10.10.51.14','root','tvmining@123','hqsx-statis') or die ('Link database failed');
@@ -19,7 +19,7 @@ $sql = "SELECT id FROM today_statis WHERE statis_date = '".$thatDate."'";
 $query = mysqli_query($connect, $sql); 
 $row = @mysqli_fetch_row($query);
 if(!empty($row)){
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . '数据已统计')) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 1, 'msg' => $thatDate . '数据已统计')) . "\n";exit;
 }
 //遍历该目录下的.log文件
 $log_dir_path = '/opt/host/hqsxlog/';
@@ -27,7 +27,7 @@ $log_list = listDir($log_dir_path, $file_date);
 function listDir($dir, $file_date){
     static $result_array = array();
     if(!is_dir($dir)){
-    	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $dir . '目录不存在')) . '\n';exit;
+    	echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $dir . '目录不存在')) . "\n";exit;
     }
     if ($dh = opendir($dir)){
     	while (($file = readdir($dh)) !== false){
@@ -49,28 +49,27 @@ function listDir($dir, $file_date){
     }
     return $result_array;
 }
-/*echo "<pre>";
-print_r($log_list);exit;*/
+
 if(empty($log_list)){
 	exec("/bin/bash /opt/host/hqsxlog/bin/ngx-log-sync-day.sh", $array, $return);
-	if($return == 1){
-		echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $log_dir_path . '下没有符合的日志文件')) . '\n';exit;
+	if($return != 0){
+		echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $log_dir_path . '下没有符合的日志文件')) . "\n";exit;
 	}
 }
 foreach($log_list as $key => $value){
 $file_path = $value;
 if (file_exists($file_path) == false) {
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件不存在')) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $file_path . '文件不存在')) . "\n";exit;
 }
 if (is_readable($file_path) == false) {
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件不可读')) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $file_path . '文件不可读')) . "\n";exit;
 }
 $fp = fopen($file_path, "r");
 if($fp == false){
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件打开失败')) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $file_path . '文件打开失败')) . "\n";exit;
  }
 if(filesize($file_path) == false){
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $file_path . '文件内容为空')) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $file_path . '文件内容为空')) . "\n";exit;
 }
 $i = 1;
 while(!@feof($fp)){
@@ -449,12 +448,12 @@ if(empty($row)){
 				@unlink($value);
 			}
 			mysqli_close($connect);
-			echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . '数据入库成功')) . '\n';exit;
+			echo $datetime . "--" . json_encode(array('code' => 1, 'msg' => $thatDate . '数据入库成功')) . "\n";exit;
 		}
-		echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 0, 'msg' => $thatDate . '数据入库失败')) . '\n';exit;
+		echo $datetime . "--" . json_encode(array('code' => 0, 'msg' => $thatDate . '数据入库失败')) . "\n";exit;
 	}
 }else{
-	echo $datetime . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => 1, 'msg' => $thatDate . "数据已统计")) . '\n';exit;
+	echo $datetime . "--" . json_encode(array('code' => 1, 'msg' => $thatDate . "数据已统计")) . "\n";exit;
 }
 //根据guid获取title
 function getTitleByguid($guid = ''){
@@ -466,7 +465,7 @@ function getTitleByguid($guid = ''){
   }
   $json_data = file_get_contents($httpurl);
   if(empty($json_data)){
-    echo date("Y-m-d H:i:s") . '&nbsp;-&nbsp;-&nbsp;' . json_encode(array('code' => '0', 'msg' => $guid . '请求获取title失败')) . '\n';
+    echo date("Y-m-d H:i:s") . "--" . json_encode(array('code' => '0', 'msg' => $guid . '请求获取title失败')) . "\n";
   }
   $arr_data = json_decode($json_data, true);
   if(is_numeric($guid)){
